@@ -21324,42 +21324,45 @@ void Player::PetSpellInitialize()
     data.FlushBits();
 
     // action bar loop
-    charmInfo->BuildActionBar(&data);
+	if (getLevel() >= sWorld->getIntConfig(CONFIG_START_PETBAR_LEVEL))
+		{
+		charmInfo->BuildActionBar(&data);
 
-    time_t curTime = time(NULL);
+		time_t curTime = time(NULL);
 
-    for (CreatureSpellCooldowns::const_iterator itr = pet->m_CreatureSpellCooldowns.begin(); itr != pet->m_CreatureSpellCooldowns.end(); ++itr)
-    {
-        SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(itr->first);
-        if (!spellInfo)
-        {
-            data << uint32(0);
-            data << uint32(0);
-            data << uint16(0);
-            data << uint32(0);
-            continue;
-        }
+		for (CreatureSpellCooldowns::const_iterator itr = pet->m_CreatureSpellCooldowns.begin(); itr != pet->m_CreatureSpellCooldowns.end(); ++itr)
+		{
+			SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(itr->first);
+			if (!spellInfo)
+			{
+				data << uint32(0);
+				data << uint32(0);
+				data << uint16(0);
+				data << uint32(0);
+				continue;
+			}
 
-        time_t cooldown = (itr->second > curTime) ? (itr->second - curTime) * IN_MILLISECONDS : 0;
+			time_t cooldown = (itr->second > curTime) ? (itr->second - curTime) * IN_MILLISECONDS : 0;
 
-        CreatureSpellCooldowns::const_iterator categoryitr = pet->m_CreatureCategoryCooldowns.find(spellInfo->GetCategory());
-        if (categoryitr != pet->m_CreatureCategoryCooldowns.end())
-        {
-            time_t categoryCooldown = (categoryitr->second > curTime) ? (categoryitr->second - curTime) * IN_MILLISECONDS : 0;
-            data << uint32(categoryCooldown);           // category cooldown
-            data << uint32(itr->first);                 // spell ID
-            data << uint16(spellInfo->GetCategory());   // spell category
-            data << uint32(cooldown);                   // spell cooldown
-        }
-        else
-        {
-            data << uint32(0);
-            data << uint32(itr->first);                 // spell ID
-            data << uint16(0);
-            data << uint32(cooldown);
-        }
-        ++cooldownCount;
-    }
+			CreatureSpellCooldowns::const_iterator categoryitr = pet->m_CreatureCategoryCooldowns.find(spellInfo->GetCategory());
+			if (categoryitr != pet->m_CreatureCategoryCooldowns.end())
+			{
+				time_t categoryCooldown = (categoryitr->second > curTime) ? (categoryitr->second - curTime) * IN_MILLISECONDS : 0;
+				data << uint32(categoryCooldown);           // category cooldown
+				data << uint32(itr->first);                 // spell ID
+				data << uint16(spellInfo->GetCategory());   // spell category
+				data << uint32(cooldown);                   // spell cooldown
+			}
+			else
+			{
+				data << uint32(0);
+				data << uint32(itr->first);                 // spell ID
+				data << uint16(0);
+				data << uint32(cooldown);
+			}
+			++cooldownCount;
+		}
+	}
 
     data.PutBits(cooldownCountPos, cooldownCount, 20);
     data.WriteByteSeq(guid[2]);
