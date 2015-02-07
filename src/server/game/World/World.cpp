@@ -792,7 +792,7 @@ void World::LoadConfigSettings(bool reload)
         m_int_configs[CONFIG_START_PLAYER_MONEY] = 0x7FFFFFFF-1;
     }
 
-	m_int_configs[CONFIG_START_PETBAR_LEVEL] = sConfigMgr->GetIntDefault("StartPetbarLevel", 10);
+    m_int_configs[CONFIG_START_PETBAR_LEVEL] = sConfigMgr->GetIntDefault("StartPetbarLevel", 10);
 
     m_int_configs[CONFIG_CURRENCY_RESET_HOUR] = sConfigMgr->GetIntDefault("Currency.ResetHour", 3);
     if (m_int_configs[CONFIG_CURRENCY_RESET_HOUR] > 23)
