@@ -322,12 +322,12 @@ void WorldSession::HandleReadItem(WorldPacket& recvData)
         InventoryResult msg = _player->CanUseItem(pItem);
         if (msg == EQUIP_ERR_OK)
         {
-            data.Initialize(SMSG_READ_ITEM_OK, 8);
+            data.Initialize(SMSG_READ_ITEM_RESULT_OK, 8);
             TC_LOG_INFO("network", "STORAGE: Item page sent");
         }
         else
         {
-            data.Initialize(SMSG_READ_ITEM_FAILED, 8);
+            data.Initialize(SMSG_READ_ITEM_RESULT_FAILED, 8);
             TC_LOG_INFO("network", "STORAGE: Unable to read item");
             _player->SendEquipError(msg, pItem, NULL);
         }
@@ -1053,7 +1053,7 @@ void WorldSession::HandleAutoStoreBankItemOpcode(WorldPacket& recvPacket)
 
 void WorldSession::SendEnchantmentLog(uint64 target, uint64 caster, uint32 itemId, uint32 enchantId)
 {
-    WorldPacket data(SMSG_ENCHANTMENTLOG, (8+8+4+4));
+    WorldPacket data(SMSG_ENCHANTMENT_LOG, (8+8+4+4));
     data.appendPackGUID(target);
     data.appendPackGUID(caster);
     data << uint32(itemId);
@@ -1061,14 +1061,48 @@ void WorldSession::SendEnchantmentLog(uint64 target, uint64 caster, uint32 itemI
     GetPlayer()->SendMessageToSet(&data, true);
 }
 
-void WorldSession::SendItemEnchantTimeUpdate(uint64 Playerguid, uint64 Itemguid, uint32 slot, uint32 Duration)
+void WorldSession::SendItemEnchantTimeUpdate(ObjectGuid Playerguid, ObjectGuid Itemguid, uint32 slot, uint32 Duration)
 {
-                                                            // last check 2.0.10
-    WorldPacket data(SMSG_ITEM_ENCHANT_TIME_UPDATE, (8+4+4+8));
-    data << uint64(Itemguid);
+    WorldPacket data(SMSG_ITEM_ENCHANT_TIME_UPDATE, 8 + 8 + 4 + 4);
+
+    data.WriteBit(Itemguid[4]);
+    data.WriteBit(Itemguid[0]);
+    data.WriteBit(Playerguid[3]);
+    data.WriteBit(Itemguid[3]);
+    data.WriteBit(Playerguid[2]);
+    data.WriteBit(Playerguid[6]);
+    data.WriteBit(Playerguid[7]);
+    data.WriteBit(Itemguid[1]);
+    data.WriteBit(Playerguid[4]);
+    data.WriteBit(Itemguid[6]);
+    data.WriteBit(Itemguid[5]);
+    data.WriteBit(Playerguid[0]);
+    data.WriteBit(Itemguid[2]);
+    data.WriteBit(Playerguid[5]);
+    data.WriteBit(Playerguid[1]);
+    data.WriteBit(Itemguid[7]);
+
+    data.FlushBits();
+
     data << uint32(slot);
+    data.WriteByteSeq(Playerguid[4]);
+    data.WriteByteSeq(Playerguid[2]);
+    data.WriteByteSeq(Itemguid[5]);
+    data.WriteByteSeq(Itemguid[4]);
+    data.WriteByteSeq(Playerguid[6]);
+    data.WriteByteSeq(Itemguid[1]);
+    data.WriteByteSeq(Playerguid[0]);
+    data.WriteByteSeq(Playerguid[1]);
+    data.WriteByteSeq(Itemguid[6]);
+    data.WriteByteSeq(Itemguid[2]);
+    data.WriteByteSeq(Playerguid[7]);
+    data.WriteByteSeq(Itemguid[0]);
+    data.WriteByteSeq(Itemguid[3]);
+    data.WriteByteSeq(Itemguid[7]);
+    data.WriteByteSeq(Playerguid[3]);
+    data.WriteByteSeq(Playerguid[5]);
     data << uint32(Duration);
-    data << uint64(Playerguid);
+
     SendPacket(&data);
 }
 
@@ -1467,8 +1501,25 @@ void WorldSession::HandleItemRefundInfoRequest(WorldPacket& recvData)
 {
     TC_LOG_DEBUG("network", "WORLD: CMSG_ITEM_REFUND_INFO");
 
-    uint64 guid;
-    recvData >> guid;                                      // item guid
+    ObjectGuid guid;
+    
+    guid[1] = recvData.ReadBit();
+    guid[0] = recvData.ReadBit();
+    guid[3] = recvData.ReadBit();
+    guid[2] = recvData.ReadBit();
+    guid[7] = recvData.ReadBit();
+    guid[4] = recvData.ReadBit();
+    guid[5] = recvData.ReadBit();
+    guid[6] = recvData.ReadBit();
+    
+    recvData.ReadByteSeq(guid[3]);
+    recvData.ReadByteSeq(guid[7]);
+    recvData.ReadByteSeq(guid[5]);
+    recvData.ReadByteSeq(guid[1]);
+    recvData.ReadByteSeq(guid[0]);
+    recvData.ReadByteSeq(guid[6]);
+    recvData.ReadByteSeq(guid[4]);
+    recvData.ReadByteSeq(guid[2]);
 
     Item* item = _player->GetItemByGuid(guid);
     if (!item)
@@ -1477,7 +1528,7 @@ void WorldSession::HandleItemRefundInfoRequest(WorldPacket& recvData)
         return;
     }
 
-    GetPlayer()->SendRefundInfo(item);
+    GetPlayer()->RefundItem(item);
 }
 
 void WorldSession::HandleItemRefund(WorldPacket &recvData)
@@ -1739,14 +1790,6 @@ void WorldSession::HandleTransmogrifyItems(WorldPacket& recvData)
         player->ModifyMoney(-cost);
 }
 
-void WorldSession::SendReforgeResult(bool success)
-{
-    WorldPacket data(SMSG_REFORGE_RESULT, 1);
-    data.WriteBit(success);
-    data.FlushBits();
-    SendPacket(&data);
-}
-
 void WorldSession::HandleReforgeItemOpcode(WorldPacket& recvData)
 {
     uint32 slot, reforgeEntry;
@@ -1833,4 +1876,37 @@ void WorldSession::HandleReforgeItemOpcode(WorldPacket& recvData)
 
     if (item->IsEquipped())
         player->ApplyReforgeEnchantment(item, true);
+}
+
+void WorldSession::SendReforgeResult(bool success)
+{
+    WorldPacket data(SMSG_REFORGE_RESULT, 1);
+    data.WriteBit(success);
+    data.FlushBits();
+    SendPacket(&data);
+}
+
+void WorldSession::SendItemExpirePurchaseRefund(ObjectGuid itemGuid)
+{
+    WorldPacket data(SMSG_ITEM_EXPIRE_PURCHASE_REFUND, 8);
+
+    data.WriteBit(itemGuid[7]);
+    data.WriteBit(itemGuid[4]);
+    data.WriteBit(itemGuid[2]);
+    data.WriteBit(itemGuid[6]);
+    data.WriteBit(itemGuid[5]);
+    data.WriteBit(itemGuid[3]);
+    data.WriteBit(itemGuid[1]);
+    data.WriteBit(itemGuid[0]);
+
+    data.WriteByteSeq(itemGuid[4]);
+    data.WriteByteSeq(itemGuid[0]);
+    data.WriteByteSeq(itemGuid[6]);
+    data.WriteByteSeq(itemGuid[7]);
+    data.WriteByteSeq(itemGuid[1]);
+    data.WriteByteSeq(itemGuid[2]);
+    data.WriteByteSeq(itemGuid[3]);
+    data.WriteByteSeq(itemGuid[5]);
+
+    SendPacket(&data);
 }

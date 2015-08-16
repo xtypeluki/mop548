@@ -4672,7 +4672,7 @@ GameObject* Unit::GetGameObject(uint32 spellId) const
 
 void Unit::AddGameObject(GameObject* gameObj)
 {
-    if (!gameObj || !gameObj->GetOwnerGUID() == 0)
+    if (!gameObj || !(gameObj->GetOwnerGUID() == 0))
         return;
 
     m_gameObj.push_back(gameObj);
@@ -9812,6 +9812,26 @@ bool Unit::IsImmunedToSpellEffect(SpellInfo const* spellInfo, uint32 index) cons
     return false;
 }
 
+uint32 Unit::GetSchoolImmunityMask() const
+{
+    uint32 mask = 0;
+    SpellImmuneList const& schoolList = m_spellImmune[IMMUNITY_SCHOOL];
+    for (SpellImmuneList::const_iterator itr = schoolList.begin(); itr != schoolList.end(); ++itr)
+        mask |= itr->type;
+
+    return mask;
+}
+
+uint32 Unit::GetMechanicImmunityMask() const
+{
+    uint32 mask = 0;
+    SpellImmuneList const& mechanicList = m_spellImmune[IMMUNITY_MECHANIC];
+    for (SpellImmuneList::const_iterator itr = mechanicList.begin(); itr != mechanicList.end(); ++itr)
+        mask |= (1 << itr->type);
+
+    return mask;
+}
+
 uint32 Unit::MeleeDamageBonusDone(Unit* victim, uint32 pdamage, WeaponAttackType attType, SpellInfo const* spellProto)
 {
     if (!victim || pdamage == 0)
@@ -10135,12 +10155,6 @@ void Unit::Mount(uint32 mount, uint32 VehicleId, uint32 creatureEntry)
         {
             if (CreateVehicleKit(VehicleId, creatureEntry))
             {
-                // Send others that we now have a vehicle
-                WorldPacket data(SMSG_PLAYER_VEHICLE_DATA, GetPackGUID().size()+4);
-                data.appendPackGUID(GetGUID());
-                data << uint32(VehicleId);
-                SendMessageToSet(&data, true);
-
                 player->SendOnCancelExpectedVehicleRideAura();
 
                 // mounts can also have accessories
@@ -10203,11 +10217,6 @@ void Unit::Dismount()
     // dismount as a vehicle
     if (GetTypeId() == TYPEID_PLAYER && GetVehicleKit())
     {
-        // Send other players that we are no longer a vehicle
-        data.Initialize(SMSG_PLAYER_VEHICLE_DATA, 8+4);
-        data.appendPackGUID(GetGUID());
-        data << uint32(0);
-        ToPlayer()->SendMessageToSet(&data, true);
         // Remove vehicle from player
         RemoveVehicleKit();
     }
@@ -11334,6 +11343,12 @@ float Unit::ApplyEffectModifiers(SpellInfo const* spellProto, uint8 effect_index
             case 2:
                 modOwner->ApplySpellMod(spellProto->Id, SPELLMOD_EFFECT3, value);
                 break;
+            case 3:
+                modOwner->ApplySpellMod(spellProto->Id, SPELLMOD_EFFECT4, value);
+                break;
+            case 4:
+                modOwner->ApplySpellMod(spellProto->Id, SPELLMOD_EFFECT5, value);
+                break;
         }
     }
     return value;
@@ -12107,7 +12122,7 @@ void Unit::RemoveFromWorld()
     {
         m_duringRemoveFromWorld = true;
         if (IsVehicle())
-            RemoveVehicleKit();
+            RemoveVehicleKit(true);
 
         RemoveCharmAuras();
         RemoveBindSightAuras();
@@ -14663,7 +14678,7 @@ Unit* Unit::GetRedirectThreatTarget()
     return _redirectThreadInfo.GetTargetGUID() ? ObjectAccessor::GetUnit(*this, _redirectThreadInfo.GetTargetGUID()) : NULL;
 }
 
-bool Unit::CreateVehicleKit(uint32 id, uint32 creatureEntry)
+bool Unit::CreateVehicleKit(uint32 id, uint32 creatureEntry, bool loading /*= false*/)
 {
     VehicleEntry const* vehInfo = sVehicleStore.LookupEntry(id);
     if (!vehInfo)
@@ -14672,13 +14687,20 @@ bool Unit::CreateVehicleKit(uint32 id, uint32 creatureEntry)
     m_vehicleKit = new Vehicle(this, vehInfo, creatureEntry);
     m_updateFlag |= UPDATEFLAG_VEHICLE;
     m_unitTypeMask |= UNIT_MASK_VEHICLE;
+
+    if (!loading)
+        SendSetVehicleRecId(id);
+
     return true;
 }
 
-void Unit::RemoveVehicleKit()
+void Unit::RemoveVehicleKit(bool remove /*= false*/)
 {
     if (!m_vehicleKit)
         return;
+
+    if (!remove)
+        SendSetVehicleRecId(0);
 
     m_vehicleKit->Uninstall();
     delete m_vehicleKit;
@@ -16283,7 +16305,7 @@ void Unit::SendThreatListUpdate()
         TC_LOG_DEBUG("entities.unit", "WORLD: Send SMSG_THREAT_UPDATE Message");
 
         ObjectGuid Guid = GetGUID();
-        WorldPacket data(SMSG_THREAT_UPDATE);
+        WorldPacket data(SMSG_THREAT_UPDATE, 24);
 
         data.WriteBit(Guid[5]);
         data.WriteBit(Guid[6]);
@@ -16309,7 +16331,7 @@ void Unit::SendThreatListUpdate()
             data.WriteBit(unitGuid[7]);
         }
 
-        data.WriteByteSeq(Guid[2]);
+        data.WriteBit(Guid[2]);
 
         for (ThreatContainer::StorageType::const_iterator itr = tlist.begin(); itr != tlist.end(); ++itr)
         {
@@ -17142,4 +17164,58 @@ void Unit::BuildValuesUpdate(uint8 updateType, ByteBuffer* data, Player* target)
     updateMask.AppendToPacket(data);
     data->append(fieldBuffer);
     *data << uint8(0);
+}
+
+void Unit::SendSetVehicleRecId(uint32 vehicleId)
+{
+    if (Player* player = ToPlayer())
+    {
+        ObjectGuid moverGuid = GetGUID();
+        uint32 index = m_movementCounter++;
+        WorldPacket data(SMSG_MOVE_SET_VEHICLE_REC_ID, 8 + 4 + 4);
+        data.WriteBit(moverGuid[0]);
+        data.WriteBit(moverGuid[6]);
+        data.WriteBit(moverGuid[1]);
+        data.WriteBit(moverGuid[3]);
+        data.WriteBit(moverGuid[7]);
+        data.WriteBit(moverGuid[4]);
+        data.WriteBit(moverGuid[5]);
+        data.WriteBit(moverGuid[2]);
+
+        data.WriteByteSeq(moverGuid[6]);
+        data.WriteByteSeq(moverGuid[7]);
+        data.WriteByteSeq(moverGuid[0]);
+        data.WriteByteSeq(moverGuid[3]);
+        data << uint32(vehicleId);
+        data << uint32(index);
+        data.WriteByteSeq(moverGuid[1]);
+        data.WriteByteSeq(moverGuid[5]);
+        data.WriteByteSeq(moverGuid[2]);
+        data.WriteByteSeq(moverGuid[4]);
+
+        player->SendDirectMessage(&data);
+    }
+
+    ObjectGuid vehicleGuid = GetGUID();
+    WorldPacket data(SMSG_SET_VEHICLE_REC_ID, 8 + 4);
+    data.WriteBit(vehicleGuid[5]);
+    data.WriteBit(vehicleGuid[7]);
+    data.WriteBit(vehicleGuid[2]);
+    data.WriteBit(vehicleGuid[1]);
+    data.WriteBit(vehicleGuid[4]);
+    data.WriteBit(vehicleGuid[0]);
+    data.WriteBit(vehicleGuid[3]);
+    data.WriteBit(vehicleGuid[6]);
+
+    data.WriteByteSeq(vehicleGuid[5]);
+    data.WriteByteSeq(vehicleGuid[7]);
+    data.WriteByteSeq(vehicleGuid[4]);
+    data.WriteByteSeq(vehicleGuid[6]);
+    data.WriteByteSeq(vehicleGuid[2]);
+    data.WriteByteSeq(vehicleGuid[1]);
+    data.WriteByteSeq(vehicleGuid[3]);
+    data.WriteByteSeq(vehicleGuid[0]);
+    data << uint32(vehicleId);
+
+    SendMessageToSet(&data, true);
 }

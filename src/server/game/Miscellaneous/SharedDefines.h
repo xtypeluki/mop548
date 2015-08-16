@@ -724,6 +724,48 @@ enum SpellAttr10
     SPELL_ATTR10_UNK31                            = 0x80000000  // 31
 };
 
+enum Specializations
+{
+    SPEC_NONE                           = 0,
+    SPEC_MAGE_ARCANE                    = 62,
+    SPEC_MAGE_FIRE                      = 63,
+    SPEC_MAGE_FROST                     = 64,
+    SPEC_PALADIN_HOLY                   = 65,
+    SPEC_PALADIN_PROTECTION             = 66,
+    SPEC_PALADIN_RETRIBUTION            = 70,
+    SPEC_WARRIOR_ARMS                   = 71,
+    SPEC_WARRIOR_FURY                   = 72,
+    SPEC_WARRIOR_PROTECTION             = 73,
+    SPEC_PET_FEROCITY                   = 74,
+    SPEC_PET_CUNNING                    = 79,
+    SPEC_PET_TENACITY                   = 81,
+    SPEC_DRUID_BALANCE                  = 102,
+    SPEC_DRUID_FERAL                    = 103,
+    SPEC_DRUID_GUARDIAN                 = 104,
+    SPEC_DRUID_RESTORATION              = 105,
+    SPEC_DEATH_KNIGHT_BLOOD             = 250,
+    SPEC_DEATH_KNIGHT_FROST             = 251,
+    SPEC_DEATH_KNIGHT_UNHOLY            = 252,
+    SPEC_HUNTER_BEAST_MASTERY           = 253,
+    SPEC_HUNTER_MARKSMANSHIP            = 254,
+    SPEC_HUNTER_SURVIVAL                = 255,
+    SPEC_PRIEST_DISCIPLINE              = 256,
+    SPEC_PRIEST_HOLY                    = 257,
+    SPEC_PRIEST_SHADOW                  = 258,
+    SPEC_ROGUE_ASSASSINATION            = 259,
+    SPEC_ROGUE_COMBAT                   = 260,
+    SPEC_ROGUE_SUBTLETY                 = 261,
+    SPEC_SHAMAN_ELEMENTAL               = 262,
+    SPEC_SHAMAN_ENHANCEMENT             = 263,
+    SPEC_SHAMAN_RESTORATION             = 264,
+    SPEC_WARLOCK_AFFLICTION             = 265,
+    SPEC_WARLOCK_DEMONOLOGY             = 266,
+    SPEC_WARLOCK_DESTRUCTION            = 267,
+    SPEC_MONK_BREWMASTER                = 268,
+    SPEC_MONK_WINDWALKER                = 269,
+    SPEC_MONK_MISTWEAVER                = 270
+};
+
 #define MIN_TALENT_SPEC         0
 #define MAX_TALENT_SPEC         1
 #define MIN_TALENT_SPECS        1
@@ -3075,10 +3117,25 @@ enum CreatureFamily
     CREATURE_FAMILY_BEETLE              = 53,
     CREATURE_FAMILY_SHALE_SPIDER        = 55,
     CREATURE_FAMILY_ZOMBIE              = 56,
-    CREATURE_FAMILY_BEETLE_OLD          = 57,
+    CREATURE_FAMILY_QA_TEST_FAMILY      = 57,
     CREATURE_FAMILY_SILITHID_2          = 59,
     CREATURE_FAMILY_WASP_2              = 66,
     CREATURE_FAMILY_HYDRA               = 68,
+    CREATURE_FAMILY_FEL_IMP             = 100,
+    CREATURE_FAMILY_VOIDLORD            = 101,
+    CREATURE_FAMILY_SHIVARRA            = 102,
+    CREATURE_FAMILY_OBSERVER            = 103,
+    CREATURE_FAMILY_WRATHGUARD          = 104,
+    CREATURE_FAMILY_INFERNAL            = 108,
+    CREATURE_FAMILY_FIRE_ELEMENTAL      = 116,
+    CREATURE_FAMILY_EARTH_ELEMENTAL     = 117,
+    CREATURE_FAMILY_CRANE               = 125,
+    CREATURE_FAMILY_WATER_STRIDER       = 126,
+    CREATURE_FAMILY_PORCUPINE           = 127,
+    CREATURE_FAMILY_QUILEN              = 128,
+    CREATURE_FAMILY_GOAT                = 129,
+    CREATURE_FAMILY_BASILISK            = 130,
+    CREATURE_FAMILY_DIREHORN            = 138
 };
 
 enum CreatureTypeFlags
