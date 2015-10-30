@@ -497,7 +497,8 @@ void WorldSession::HandleWhoOpcode(WorldPacket& recvData)
 
     SendPacket(&data);
 
-    delete [] words, wordLens;
+    delete[] words;
+    delete[] wordLens;
 
     TC_LOG_DEBUG("network", "WORLD: Send SMSG_WHO Message");
 }
@@ -976,9 +977,9 @@ void WorldSession::HandleResurrectResponseOpcode(WorldPacket& recvData)
     TC_LOG_DEBUG("network", "WORLD: Received CMSG_RESURRECT_RESPONSE");
 
     ObjectGuid guid;
-    uint32 response;
+    uint32 status;
 
-    recvData >> response;
+    recvData >> status;
 
     guid[3] = recvData.ReadBit();
     guid[0] = recvData.ReadBit();
@@ -1001,7 +1002,7 @@ void WorldSession::HandleResurrectResponseOpcode(WorldPacket& recvData)
     if (GetPlayer()->IsAlive())
         return;
 
-    if (response == 0)
+    if (status == 1)
     {
         GetPlayer()->ClearResurrectRequestData();           // reject
         return;

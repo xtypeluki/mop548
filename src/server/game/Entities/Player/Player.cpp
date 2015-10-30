@@ -1259,12 +1259,13 @@ void Player::SendMirrorTimer(MirrorTimerType Type, uint32 MaxValue, uint32 Curre
         return;
     }
     WorldPacket data(SMSG_START_MIRROR_TIMER, 21);
-    data << (uint32)Type;
     data << MaxValue;
-    data << CurrentValue;
+    data << (uint32)0; // spell id
+    data << (uint32)Type;
     data << Regen;
-    data << (uint8)0;
-    data << (uint32)0;                                      // spell id
+    data << CurrentValue;
+    data.WriteBit(0); // Paused
+    data.FlushBits();
     GetSession()->SendPacket(&data);
 }
 
@@ -1312,18 +1313,18 @@ uint32 Player::EnvironmentalDamage(EnviromentalDamage type, uint32 damage)
     data.WriteBit(Guid[6]);
     data.WriteBit(Guid[3]);
 
-    data << uint32(damage);
+    data << uint32(absorb);
     data.WriteByteSeq(Guid[0]);
     data.WriteByteSeq(Guid[7]);
     data << uint8(type != DAMAGE_FALL_TO_VOID ? type : DAMAGE_FALL);
     data.WriteByteSeq(Guid[6]);
     data.WriteByteSeq(Guid[3]);
     data.WriteByteSeq(Guid[5]);
-    data << uint32(absorb);
+    data << uint32(resist);
     data.WriteByteSeq(Guid[1]);
     data.WriteByteSeq(Guid[2]);
     data.WriteByteSeq(Guid[4]);
-    data << uint32(resist);
+    data << uint32(damage);
     SendMessageToSet(&data, true);
 
     uint32 final_damage = DealDamage(this, damage, NULL, SELF_DAMAGE, SPELL_SCHOOL_MASK_NORMAL, NULL, false);
@@ -5235,8 +5236,25 @@ void Player::DeleteOldCharacters(uint32 keepDays)
 */
 void Player::BuildPlayerRepop()
 {
-    WorldPacket data(SMSG_PRE_RESURRECT, GetPackGUID().size());
-    data.append(GetPackGUID());
+    ObjectGuid guid;
+    WorldPacket data(SMSG_PRE_RESURRECT, 8);
+    data.WriteBit(guid[1]);
+    data.WriteBit(guid[7]);
+    data.WriteBit(guid[5]);
+    data.WriteBit(guid[2]);
+    data.WriteBit(guid[6]);
+    data.WriteBit(guid[0]);
+    data.WriteBit(guid[3]);
+    data.WriteBit(guid[4]);
+
+    data.WriteByteSeq(guid[5]);
+    data.WriteByteSeq(guid[1]);
+    data.WriteByteSeq(guid[7]);
+    data.WriteByteSeq(guid[0]);
+    data.WriteByteSeq(guid[6]);
+    data.WriteByteSeq(guid[4]);
+    data.WriteByteSeq(guid[2]);
+    data.WriteByteSeq(guid[3]);
     GetSession()->SendPacket(&data);
 
     if (getRace() == RACE_NIGHTELF)
@@ -5307,7 +5325,7 @@ void Player::ResurrectPlayer(float restore_percent, bool applySickness)
 
     setDeathState(ALIVE);
 
-    SetWaterWalking(false);
+    SetWaterWalking(false, true);
     if (!HasUnitState(UNIT_STATE_STUNNED))
         SetRooted(false);
 
@@ -28028,9 +28046,10 @@ void Player::SendMovementSetCanTransitionBetweenSwimAndFly(bool apply)
 
 void Player::SendMovementSetCollisionHeight(float height)
 {
-    static MovementStatusElements const heightElement = MSEExtraFloat;
-    Movement::ExtraMovementStatusElement extra(&heightElement);
-    extra.Data.floatData = height;
+    static MovementStatusElements const heightElement[] = { MSEExtraFloat, MSEExtraFloat };
+    Movement::ExtraMovementStatusElement extra(heightElement);
+    extra.Data.floatData.push_back(height);
+    extra.Data.floatData.push_back(1.f);
     Movement::PacketSender(this, NULL_OPCODE, SMSG_MOVE_SET_COLLISION_HEIGHT, SMSG_MOVE_UPDATE_COLLISION_HEIGHT, &extra).Send();
 }
 
@@ -28253,6 +28272,7 @@ void Player::ReadMovementInfo(WorldPacket& data, MovementInfo* mi, Movement::Ext
         return;
     }
 
+    bool hasMountDisplayId = false;
     bool hasMovementFlags = false;
     bool hasMovementFlags2 = false;
     bool hasTimestamp = false;
@@ -28357,6 +28377,19 @@ void Player::ReadMovementInfo(WorldPacket& data, MovementInfo* mi, Movement::Ext
             case MSEHasSpline:
                 data.ReadBit();
                 break;
+            case MSEHasMountDisplayId:
+                hasMountDisplayId = !data.ReadBit();
+                break;
+            case MSEMountDisplayIdWithCheck: // Fallback here
+                if (!hasMountDisplayId)
+                    break;
+            case MSEMountDisplayIdWithoutCheck:
+            {
+                uint32 mountDisplayId;
+                data >> mountDisplayId;
+                SetUInt32Value(UNIT_FIELD_MOUNT_DISPLAY_ID, mountDisplayId);
+                break;
+            }
             case MSEMovementFlags:
                 if (hasMovementFlags)
                     mi->flags = data.ReadBits(30);

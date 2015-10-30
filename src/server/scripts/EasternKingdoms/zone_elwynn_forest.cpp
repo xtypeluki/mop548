@@ -21,12 +21,10 @@
 /* ScriptData
 SDName: Elwynn_Forest
 SD%Complete: 50
-SDComment: Quest support: 1786
 SDCategory: Elwynn Forest
 EndScriptData */
 
 /* ContentData
-npc_henze_faulk
 npc_blackrock_spy
 npc_blackrock_invader
 npc_stormwind_infantry
@@ -56,76 +54,6 @@ enum Northshire
     AI_HEALTH_MIN             = 85,         //Minimum health for AI staged fight between Blackrock Battle Worgs and Stormwind Infantry
     SAY_INFANTRY_YELL         = 1,          //Stormwind Infantry Yell phrase from Group 1
     INFANTRY_YELL_CHANCE      = 10           //% Chance for Stormwind Infantry to Yell - May need further adjustment... should be low chance
-};
-
-/*######
-## npc_henze_faulk
-######*/
-enum eHenzeFaulkData
-{
-    SAY_HEAL = -1000187,
-};
-
-class npc_henze_faulk : public CreatureScript
-{
-public:
-    npc_henze_faulk() : CreatureScript("npc_henze_faulk") { }
-
-    CreatureAI* GetAI(Creature* creature) const
-    {
-        return new npc_henze_faulkAI (creature);
-    }
-
-    struct npc_henze_faulkAI : public ScriptedAI
-    {
-        uint32 lifeTimer;
-        bool spellHit;
-
-        npc_henze_faulkAI(Creature* creature) : ScriptedAI(creature) {}
-
-        void Reset()
-        {
-            lifeTimer = 120000;
-			me->SetUInt32Value(OBJECT_FIELD_DYNAMIC_FLAGS, UNIT_DYNFLAG_DEAD);
-            me->SetStandState(UNIT_STAND_STATE_DEAD);   // lay down
-            spellHit = false;
-        }
-
-        void EnterCombat(Unit* /*who*/)
-        {
-        }
-
-        void MoveInLineOfSight(Unit* /*who*/)
-        {
-        }
-
-		void UpdateAI(uint32 diff) OVERRIDE
-        {
-            if (me->IsStandState())
-            {
-                if (lifeTimer <= diff)
-                {
-                    EnterEvadeMode();
-                    return;
-                }
-                else
-                    lifeTimer -= diff;
-            }
-        }
-
-        void SpellHit(Unit* /*who*/, const SpellInfo* spell) OVERRIDE
-        {
-			if (spell->Id == 8593 && !spellHit)
-            {
-                DoCast(me, 32343);
-                me->SetStandState(UNIT_STAND_STATE_STAND);
-				me->SetUInt32Value(OBJECT_FIELD_DYNAMIC_FLAGS, 0);
-                //me->RemoveAllAuras();
-                Talk(SAY_HEAL);
-                spellHit = true;
-            }
-        }
-    };
 };
 
 /*######
@@ -164,7 +92,7 @@ public:
 
         void GetCreature(float X, float Y)
         {
-            if (me->GetHomePosition().GetPositionX() == X, me->GetHomePosition().GetPositionY() == Y)
+            if (me->GetHomePosition().GetPositionX() == X && me->GetHomePosition().GetPositionY() == Y)
                 if (!me->IsInCombat() && !me->HasAura(SPELL_SPYING))
                     DoCast(me, SPELL_SPYING);
 
@@ -180,16 +108,16 @@ public:
         void Spyglass(float X1, float Y1, float X2, float Y2, float X3, float Y3, float X4, float Y4, float X5, float Y5,
             float X6, float Y6, float X7, float Y7, float X8, float Y8, float X9, float Y9)
         {
-            if (me->GetHomePosition().GetPositionX() != X1, me->GetHomePosition().GetPositionY() != Y1)
-            if (me->GetHomePosition().GetPositionX() != X2, me->GetHomePosition().GetPositionY() != Y2)
-            if (me->GetHomePosition().GetPositionX() != X3, me->GetHomePosition().GetPositionY() != Y3)
-            if (me->GetHomePosition().GetPositionX() != X4, me->GetHomePosition().GetPositionY() != Y4)
-            if (me->GetHomePosition().GetPositionX() != X5, me->GetHomePosition().GetPositionY() != Y5)
-            if (me->GetHomePosition().GetPositionX() != X6, me->GetHomePosition().GetPositionY() != Y6)
-            if (me->GetHomePosition().GetPositionX() != X7, me->GetHomePosition().GetPositionY() != Y7)
-            if (me->GetHomePosition().GetPositionX() != X8, me->GetHomePosition().GetPositionY() != Y8)
-            if (me->GetHomePosition().GetPositionX() != X9, me->GetHomePosition().GetPositionY() != Y9)
-                if (me->GetHomePosition().GetPositionX() == me->GetPositionX(), me->GetHomePosition().GetPositionY() == me->GetPositionY())
+            if ((me->GetHomePosition().GetPositionX() != X1 && me->GetHomePosition().GetPositionY() != Y1) &&
+             (me->GetHomePosition().GetPositionX() != X2 && me->GetHomePosition().GetPositionY() != Y2) &&
+             (me->GetHomePosition().GetPositionX() != X3 && me->GetHomePosition().GetPositionY() != Y3) &&
+             (me->GetHomePosition().GetPositionX() != X4 && me->GetHomePosition().GetPositionY() != Y4) &&
+             (me->GetHomePosition().GetPositionX() != X5 && me->GetHomePosition().GetPositionY() != Y5) &&
+             (me->GetHomePosition().GetPositionX() != X6 && me->GetHomePosition().GetPositionY() != Y6) &&
+             (me->GetHomePosition().GetPositionX() != X7 && me->GetHomePosition().GetPositionY() != Y7) &&
+             (me->GetHomePosition().GetPositionX() != X8 && me->GetHomePosition().GetPositionY() != Y8) &&
+             (me->GetHomePosition().GetPositionX() != X9 && me->GetHomePosition().GetPositionY() != Y9))
+                if (me->GetHomePosition().GetPositionX() == me->GetPositionX() && me->GetHomePosition().GetPositionY() == me->GetPositionY())
                     if (!me->IsInCombat() && !me->HasAura(SPELL_SPYGLASS))
                         DoCast(me, SPELL_SPYGLASS);
         }
@@ -446,7 +374,6 @@ public:
 
 void AddSC_elwynn_forest()
 {
-    new npc_henze_faulk();
     new npc_blackrock_spy();
     new npc_goblin_assassin();
     new npc_blackrock_invader();
